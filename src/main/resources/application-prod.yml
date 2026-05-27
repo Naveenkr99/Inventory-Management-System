@@ -2,18 +2,21 @@ spring:
   application:
     name: Inventory
   datasource:
-    url: jdbc:postgresql://localhost:5432/Inventory
+    url: jdbc:postgresql://postgres.railway.internal:5432/railway
     username: postgres
-    password: password
+    password: LnzZtdumZitUKLYTVRaAZdHJYkAWmqXZ
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect
   security:
     user:
       name: admin
       password: cfaa04cf-3e75-40b1-816d-99f717038b74
-  profiles:
-    active: ${ENV:dev}
+
+
+
+#username: postgres
+#password: password

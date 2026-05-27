@@ -15,5 +15,3 @@ spring:
     user:
       name: admin
       password: cfaa04cf-3e75-40b1-816d-99f717038b74
-  profiles:
-    active: ${ENV:dev}
