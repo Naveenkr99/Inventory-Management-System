@@ -51,7 +51,7 @@ public class OrderService {
         return orderRepository.findById(id).orElseThrow(() -> new RuntimeException("Order not found"));
     }
 
-    // Place order with multiple items - atomic all-or-nothing
+    // Place order with multiple items - atomic all-or-nothing with concurrency safety
     @Transactional
     public OrderEntity placeOrder(OrderRequest request) {
         if (request.getUserId() == null) {
@@ -80,9 +80,8 @@ public class OrderService {
             InventoryItem inventoryItem = inventoryService.getInventoryItemByProductAndLocation(product, location)
                     .orElseThrow(() -> new RuntimeException("Inventory item not found for product " + itemRequest.getProductId() + " at location " + itemRequest.getLocationId()));
 
-            if (inventoryItem.getQuantity() < itemRequest.getQuantity()) {
-                throw new RuntimeException("Insufficient stock for product " + product.getId() + " at location " + location.getId() + ". Available: " + inventoryItem.getQuantity() + ", Requested: " + itemRequest.getQuantity());
-            }
+            // Do NOT validate quantity here! Validation happens inside updateStockAtomicWithLock with PESSIMISTIC locking
+            // This prevents race conditions where multiple transactions check quantity simultaneously
 
             OrderItem orderItem = new OrderItem();
             orderItem.setProduct(product);
@@ -103,15 +102,17 @@ public class OrderService {
         // Save order first
         OrderEntity savedOrder = orderRepository.save(order);
 
-        // Save all order items and decrement inventory
+        // Save all order items and decrement inventory with PESSIMISTIC LOCKING
         List<OrderItem> savedOrderItems = new ArrayList<>();
         for (OrderItem orderItem : validatedOrderItems) {
             orderItem.setOrder(savedOrder);
             OrderItem savedItem = orderItemRepository.save(orderItem);
             savedOrderItems.add(savedItem);
             
-            // Decrement inventory atomically
-            inventoryService.updateStockAtomic(orderItem.getInventoryItemId(), -orderItem.getQuantity());
+            // Decrement inventory with pessimistic lock - prevents overselling
+            // If another transaction has the lock, this will WAIT
+            // Guarantees that no two transactions can both decrement below zero
+            inventoryService.updateStockAtomicWithLock(orderItem.getInventoryItemId(), -orderItem.getQuantity());
         }
 
         // Set the saved items back to the order

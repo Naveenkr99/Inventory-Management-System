@@ -92,7 +92,34 @@ public class InventoryService {
     }
 
 
-    //handle concurrency
+    // Handle concurrency - PESSIMISTIC LOCKING VERSION (Recommended)
+    @Transactional
+    public InventoryItem updateStockAtomicWithLock(Long id, int quantityChange) {
+        // Pessimistic lock: prevents other transactions from modifying this row
+        // Other threads/transactions MUST WAIT until this transaction completes
+        InventoryItem item = inventoryItemRepository.findByIdWithLock(id)
+                .orElseThrow(() -> new RuntimeException("Inventory item not found"));
+
+        // Now validate with locked row - no race condition possible
+        int newQuantity = item.getQuantity() + quantityChange;
+        if (newQuantity < 0) {
+            throw new RuntimeException("Insufficient stock. Current: " + item.getQuantity() + ", Requested change: " + quantityChange);
+        }
+
+        // Update the locked row
+        int rowsUpdated = inventoryItemRepository.updateQuantityAtomicIfPositive(id, quantityChange);
+
+        if (rowsUpdated == 0) {
+            throw new RuntimeException("Failed to update inventory - stock may have been insufficient");
+        }
+
+        // Return updated item
+        return inventoryItemRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Inventory item not found after update"));
+    }
+
+
+    //handle concurrency (Legacy - less safe, use updateStockAtomicWithLock instead)
     @Transactional
     public InventoryItem updateStockAtomic(Long id, int quantityChange) {
         // Validate inventory exists

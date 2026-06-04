@@ -24,7 +24,7 @@ public class InventoryItem {
     @JoinColumn(name = "location_id", nullable = false)
     private Location location;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "INTEGER CHECK (quantity >= 0)")
     private Integer quantity;
 
     private Integer minStockLevel;
