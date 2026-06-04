@@ -5,6 +5,9 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
+import com.naveen.Inventory.model.User;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,8 +24,13 @@ public class OrderEntity {
     private Long id;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JsonManagedReference
+    @JsonManagedReference(value = "order-items")
     private List<OrderItem> orderItems;
+
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = true)
+    @JsonBackReference(value = "user-orders")
+    private User user;
 
     @Enumerated(EnumType.STRING)
     private Status status;

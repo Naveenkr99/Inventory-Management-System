@@ -9,6 +9,8 @@ import com.naveen.Inventory.model.Product;
 import com.naveen.Inventory.model.Location;
 import com.naveen.Inventory.repository.OrderRepository;
 import com.naveen.Inventory.repository.OrderItemRepository;
+import com.naveen.Inventory.repository.UserRepository;
+import com.naveen.Inventory.model.User;
 import com.naveen.Inventory.service.ProductService;
 import com.naveen.Inventory.service.LocationService;
 import com.naveen.Inventory.service.InventoryService;
@@ -38,6 +40,9 @@ public class OrderService {
     @Autowired
     private InventoryService inventoryService;
 
+    @Autowired
+    private UserRepository userRepository;
+
     public List<OrderEntity> getAllOrders() {
         return orderRepository.findAll();
     }
@@ -49,6 +54,12 @@ public class OrderService {
     // Place order with multiple items - atomic all-or-nothing
     @Transactional
     public OrderEntity placeOrder(OrderRequest request) {
+        if (request.getUserId() == null) {
+            throw new RuntimeException("Order must be associated with a userId");
+        }
+
+        User user = userRepository.findById(request.getUserId())
+                .orElseThrow(() -> new RuntimeException("User not found with ID: " + request.getUserId()));
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new RuntimeException("Order must contain at least one item");
         }
@@ -87,6 +98,7 @@ public class OrderService {
         order.setStatus(OrderEntity.Status.PLACED);
         order.setOrderedAt(LocalDateTime.now());
         order.setOrderItems(new ArrayList<>());
+        order.setUser(user);
 
         // Save order first
         OrderEntity savedOrder = orderRepository.save(order);
